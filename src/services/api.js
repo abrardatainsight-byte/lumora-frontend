@@ -1,4 +1,4 @@
-const BASE = "https://yourusername-lumora-backend.hf.space"; // ✅ Single source of truth
+const BASE = "https://rabbydatainsight-lumora-backend.hf.space"; // ✅ Single source of truth
 
 async function req(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
