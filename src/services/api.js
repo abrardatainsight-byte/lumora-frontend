@@ -13,8 +13,20 @@ async function req(path, opts = {}) {
 }
 
 // Auth & Companies
-export const registerCompany = (data) =>
-  req("/register-company", { method: "POST", body: JSON.stringify(data) });
+export const registerCompany = async (data) => {
+  const res = await fetch("https://lumora-backend-x6vt.onrender.com/register-company", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: `Server error: ${res.status}` }));
+    throw new Error(err.detail || `Server error: ${res.status}`);
+  }
+  
+  return res.json();
+};
 
 export const getCompanies = () =>
   req("/companies");
