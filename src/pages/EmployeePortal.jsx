@@ -57,7 +57,8 @@ export default function EmployeePortal() {
           form.append("file", blob, "capture.jpg");
           
           // DIRECT FETCH BYPASS
-          const response = await fetch("https://lumora-backend-x6vt.onrender.com/analyze", {
+          // Update this URL!
+          const response = await fetch("https://yourusername-lumora-backend.hf.space/analyze", {
             method: "POST",
             body: form
           });
