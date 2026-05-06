@@ -4,22 +4,24 @@ import { register as apiRegister, login as apiLogin, getCompanies } from "../ser
 
 export default function Login({ type: initialType }) {
   const navigate = useNavigate();
-  const [role, setRole]               = useState(initialType || "employee");
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [form, setForm]               = useState({ username: "", password: "", company: "" });
-  const [companies, setCompanies]     = useState([]);
-  const [error, setError]             = useState("");
-  const [loading, setLoading]         = useState(false);
+  const [role, setRole]                     = useState(initialType || "employee");
+  const [isRegistering, setIsRegistering]   = useState(false);
+  const [form, setForm]                     = useState({ username: "", password: "", company: "" });
+  const [companies, setCompanies]           = useState([]);
+  const [companiesError, setCompaniesError] = useState("");
+  const [error, setError]                   = useState("");
+  const [loading, setLoading]               = useState(false);
 
   useEffect(() => {
     getCompanies()
       .then(res => {
-        // ✅ Safely handle both response shapes:
-        // { companies: ["Acme", ...] }  OR  ["Acme", ...]
         const list = Array.isArray(res) ? res : res.companies ?? [];
         setCompanies(list);
       })
-      .catch(err => console.error("Failed to load companies:", err));
+      .catch(err => {
+        console.error("Failed to load companies:", err);
+        setCompaniesError(err.message);
+      });
   }, []);
 
   const handleSubmit = async (e) => {
@@ -30,8 +32,6 @@ export default function Login({ type: initialType }) {
       const data = isRegistering ? await apiRegister(payload) : await apiLogin(payload);
 
       const prefix = data.role === "hr" ? "hr" : "employee";
-
-      // ✅ Always trust form.company (what user selected) — don't let backend override it
       localStorage.setItem(`${prefix}_username`, data.username || form.username);
       localStorage.setItem(`${prefix}_company`, form.company);
 
@@ -67,9 +67,17 @@ export default function Login({ type: initialType }) {
             ))}
           </div>
 
+          {/* Auth error */}
           {error && (
             <div style={{ padding: "10px 14px", background: "#FEF2F2", color: "#991B1B", borderRadius: 10, marginBottom: 16, fontSize: 13, border: "1px solid #FECACA" }}>
               {error}
+            </div>
+          )}
+
+          {/* Companies load error */}
+          {companiesError && (
+            <div style={{ padding: "10px 14px", background: "#FFF7ED", color: "#92400E", borderRadius: 10, marginBottom: 16, fontSize: 13, border: "1px solid #FED7AA" }}>
+              Could not load companies: {companiesError}
             </div>
           )}
 
@@ -79,7 +87,11 @@ export default function Login({ type: initialType }) {
               <select value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} required
                 style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 14, boxSizing: "border-box", outline: "none", background: "#fff", cursor: "pointer" }}>
                 <option value="" disabled>
-                  {companies.length === 0 ? "Loading companies…" : "Select a registered company"}
+                  {companiesError
+                    ? "Failed to load — check console"
+                    : companies.length === 0
+                    ? "Loading companies..."
+                    : "Select a registered company"}
                 </option>
                 {companies.map(c => (
                   <option key={c} value={c}>{c}</option>
@@ -101,7 +113,7 @@ export default function Login({ type: initialType }) {
 
             <button type="submit" disabled={loading}
               style={{ width: "100%", padding: "13px 0", background: loading ? "#94A3B8" : "linear-gradient(135deg,#4F46E5,#3B82F6)", color: "#fff", border: "none", borderRadius: 10, cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 15, marginTop: 4, boxShadow: loading ? "none" : "0 4px 12px rgba(79,70,229,.35)", transition: "all .2s" }}>
-              {loading ? "Please wait…" : isRegistering ? "Register" : "Login"}
+              {loading ? "Please wait..." : isRegistering ? "Register" : "Login"}
             </button>
           </form>
 
