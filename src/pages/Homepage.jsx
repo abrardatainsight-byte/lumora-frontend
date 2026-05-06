@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerCompany } from "../services/api";
 
 export default function Homepage() {
   const navigate = useNavigate();
@@ -12,7 +11,18 @@ export default function Homepage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await registerCompany({ name: newCompany });
+      // Bypassing api.js completely to destroy the Vercel cache
+      const res = await fetch("https://lumora-backend-x6vt.onrender.com/register-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCompany })
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Server error: ${res.status}`);
+      }
+
       setMsg(`Company '${newCompany}' registered successfully!`);
       setNewCompany("");
     } catch (err) {
