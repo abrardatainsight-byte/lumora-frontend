@@ -1,4 +1,4 @@
-const BASE = "https://yourusername-lumora-backend.hf.space";
+const BASE = "https://yourusername-lumora-backend.hf.space"; // ✅ Single source of truth
 
 async function req(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -17,63 +17,49 @@ export const registerCompany = async (data) => {
   const res = await fetch(`${BASE}/register-company`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
-  
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: `Server error: ${res.status}` }));
     throw new Error(err.detail || `Server error: ${res.status}`);
   }
-  
   return res.json();
 };
 
-export const getCompanies = () =>
-  req("/companies");
+export const getCompanies = () => req("/companies");
+export const register = (data) => req("/register", { method: "POST", body: JSON.stringify(data) });
+export const login = (data) => req("/login", { method: "POST", body: JSON.stringify(data) });
 
-export const register = (data) =>
-  req("/register", { method: "POST", body: JSON.stringify(data) });
-
-export const login = (data) =>
-  req("/login", { method: "POST", body: JSON.stringify(data) });
-
-// Trigger (UPDATED: Added company parameter to fix the multi-computer glitch)
+// Trigger — both now point to same backend ✅
 export const triggerCapture = (company) =>
   req(`/trigger-capture?company=${encodeURIComponent(company)}`, { method: "POST" });
 
-export const checkTrigger = (company) => 
+export const checkTrigger = (company) =>
   req(`/check-trigger?company=${encodeURIComponent(company)}`);
 
-// HR analytics — all accept a range and company param
+// HR analytics
 export const getGlobalPulse = (range = "week", company) =>
   req(`/hr/global-pulse?range=${range}&company=${encodeURIComponent(company)}`);
-
 export const getDistribution = (range = "week", company) =>
   req(`/hr/distribution?range=${range}&company=${encodeURIComponent(company)}`);
-
-export const getWeeklyTrend = (company) => 
+export const getWeeklyTrend = (company) =>
   req(`/hr/weekly-trend?company=${encodeURIComponent(company)}`);
-
-export const getIntensity = (company) => 
+export const getIntensity = (company) =>
   req(`/hr/intensity?company=${encodeURIComponent(company)}`);
-
 export const getResults = (range = "week", company) =>
   req(`/hr/results?range=${range}&company=${encodeURIComponent(company)}`);
-
 export const getEmployees = (range = "week", search = "", company) =>
   req(`/hr/employees?range=${range}&search=${encodeURIComponent(search)}&company=${encodeURIComponent(company)}`);
-
 export const getMatrix = (range = "week", company) =>
   req(`/hr/matrix?range=${range}&company=${encodeURIComponent(company)}`);
 
 // Employee analyze — FormData, NOT JSON
-export const analyzeEmotion = (username, blob) => {
+export const analyzeEmotion = (username, company, blob) => {
   const form = new FormData();
   form.append("username", username);
+  form.append("company", company); // ✅ also send company so backend knows which org
   form.append("file", blob, "capture.jpg");
-  return fetch(`${BASE}/analyze`, { method: "POST", body: form }).then((r) =>
-    r.json()
-  );
+  return fetch(`${BASE}/analyze`, { method: "POST", body: form }).then((r) => r.json());
 };
 
 // Emotion colour map
