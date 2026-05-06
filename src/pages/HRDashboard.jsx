@@ -103,8 +103,8 @@ function GlobalPulseTab({ range, company }) {
   const runAnalysis = async () => {
     setAnalyzing(true);
     try { 
-      // DIRECT FETCH BYPASS: Forces browser to hit Render, ignoring Vercel cache
-      await fetch(`https://lumora-backend-x6vt.onrender.com/trigger-capture?company=${encodeURIComponent(company)}`, {
+      // Update this URL!
+      await fetch(`https://yourusername-lumora-backend.hf.space/trigger-capture?company=${encodeURIComponent(company)}`, {
         method: "POST"
       });
       setTimeout(() => { load(); setAnalyzing(false); }, 4000); 
