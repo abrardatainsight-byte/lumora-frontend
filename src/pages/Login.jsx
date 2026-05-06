@@ -4,17 +4,21 @@ import { register as apiRegister, login as apiLogin, getCompanies } from "../ser
 
 export default function Login({ type: initialType }) {
   const navigate = useNavigate();
-  const [role, setRole] = useState(initialType || "employee");
+  const [role, setRole]               = useState(initialType || "employee");
   const [isRegistering, setIsRegistering] = useState(false);
-  const [form, setForm] = useState({ username: "", password: "", company: "" });
-  const [companies, setCompanies] = useState([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [form, setForm]               = useState({ username: "", password: "", company: "" });
+  const [companies, setCompanies]     = useState([]);
+  const [error, setError]             = useState("");
+  const [loading, setLoading]         = useState(false);
 
-  // Fetch companies for the dropdown on mount
   useEffect(() => {
     getCompanies()
-      .then(res => setCompanies(res.companies))
+      .then(res => {
+        // ✅ Safely handle both response shapes:
+        // { companies: ["Acme", ...] }  OR  ["Acme", ...]
+        const list = Array.isArray(res) ? res : res.companies ?? [];
+        setCompanies(list);
+      })
       .catch(err => console.error("Failed to load companies:", err));
   }, []);
 
@@ -24,12 +28,13 @@ export default function Login({ type: initialType }) {
     try {
       const payload = { ...form, role };
       const data = isRegistering ? await apiRegister(payload) : await apiLogin(payload);
-      
-      // BUG FIX: Namespace local storage by role
+
       const prefix = data.role === "hr" ? "hr" : "employee";
+
+      // ✅ Always trust form.company (what user selected) — don't let backend override it
       localStorage.setItem(`${prefix}_username`, data.username || form.username);
-      localStorage.setItem(`${prefix}_company`, data.company || form.company);
-      
+      localStorage.setItem(`${prefix}_company`, form.company);
+
       navigate(data.role === "hr" ? "/hr/dashboard" : "/employee/portal");
     } catch (err) {
       setError(err.message || "Authentication failed. Please check your credentials.");
@@ -73,22 +78,27 @@ export default function Login({ type: initialType }) {
               <label style={{ display: "block", marginBottom: 5, fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>Company Name</label>
               <select value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} required
                 style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 14, boxSizing: "border-box", outline: "none", background: "#fff", cursor: "pointer" }}>
-                <option value="" disabled>Select a registered company</option>
+                <option value="" disabled>
+                  {companies.length === 0 ? "Loading companies…" : "Select a registered company"}
+                </option>
                 {companies.map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
+
             <div>
               <label style={{ display: "block", marginBottom: 5, fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>Username</label>
               <input type="text" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} required
                 style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 14, boxSizing: "border-box", outline: "none", transition: "border .15s" }} />
             </div>
+
             <div>
               <label style={{ display: "block", marginBottom: 5, fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
               <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required
                 style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 14, boxSizing: "border-box", outline: "none" }} />
             </div>
+
             <button type="submit" disabled={loading}
               style={{ width: "100%", padding: "13px 0", background: loading ? "#94A3B8" : "linear-gradient(135deg,#4F46E5,#3B82F6)", color: "#fff", border: "none", borderRadius: 10, cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 15, marginTop: 4, boxShadow: loading ? "none" : "0 4px 12px rgba(79,70,229,.35)", transition: "all .2s" }}>
               {loading ? "Please wait…" : isRegistering ? "Register" : "Login"}
