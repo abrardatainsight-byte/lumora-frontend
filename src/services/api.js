@@ -6,14 +6,15 @@ async function req(path, opts = {}) {
     ...opts,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Request failed");
+    const err = await res.json().catch(() => ({ detail: `Server error: ${res.status}` }));
+    throw new Error(err.detail || `Server error: ${res.status}`);
   }
   return res.json();
 }
 
+// Auth & Companies
 export const registerCompany = async (data) => {
-  const res = await fetch("https://lumora-backend-x6vt.onrender.com/register-company", {
+  const res = await fetch(`${BASE}/register-company`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
@@ -36,11 +37,12 @@ export const register = (data) =>
 export const login = (data) =>
   req("/login", { method: "POST", body: JSON.stringify(data) });
 
-// Trigger
-export const triggerCapture = () =>
-  req("/trigger-capture", { method: "POST" });
+// Trigger (UPDATED: Added company parameter to fix the multi-computer glitch)
+export const triggerCapture = (company) =>
+  req(`/trigger-capture?company=${encodeURIComponent(company)}`, { method: "POST" });
 
-export const checkTrigger = () => req("/check-trigger");
+export const checkTrigger = (company) => 
+  req(`/check-trigger?company=${encodeURIComponent(company)}`);
 
 // HR analytics — all accept a range and company param
 export const getGlobalPulse = (range = "week", company) =>
