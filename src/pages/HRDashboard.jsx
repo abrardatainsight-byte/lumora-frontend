@@ -142,7 +142,10 @@ function GlobalPulseTab({ range, company }) {
 
   const runAnalysis = async () => {
     setAnalyzing(true);
-    try { await triggerCapture(); setTimeout(() => { load(); setAnalyzing(false); }, 4000); }
+    try { 
+      await triggerCapture(company); // FIX: Added company parameter here
+      setTimeout(() => { load(); setAnalyzing(false); }, 4000); 
+    }
     catch { setAnalyzing(false); }
   };
 
