@@ -12,7 +12,6 @@ async function req(path, opts = {}) {
   return res.json();
 }
 
-// Auth & Companies
 export const registerCompany = async (data) => {
   const res = await fetch("https://lumora-backend-x6vt.onrender.com/register-company", {
     method: "POST",
