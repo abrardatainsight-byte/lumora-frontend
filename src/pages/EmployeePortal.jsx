@@ -11,6 +11,7 @@ export default function EmployeePortal() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const username = localStorage.getItem("employee_username") || "Employee";
+  const company = localStorage.getItem("employee_company") || "Workspace"; // FIX: Added company fetch
  
   const [cameraStatus, setCameraStatus] = useState("initializing");
   const [lastEmotion, setLastEmotion] = useState(null);
@@ -69,13 +70,13 @@ export default function EmployeePortal() {
  
     const poll = async () => {
       try {
-        const res = await checkTrigger();
+        const res = await checkTrigger(company); // FIX: Added company parameter here
         if (res?.capture_now) captureAndSend();
       } catch {}
     };
     const id = setInterval(poll, 3000);
     return () => clearInterval(id);
-  }, [cameraStatus, username]);
+  }, [cameraStatus, username, company]); // FIX: Added company to dependencies
  
   const hex = lastEmotion ? (EMOTION_COLORS[lastEmotion] || "#5B4FDB") : "#5B4FDB";
  
@@ -118,7 +119,7 @@ export default function EmployeePortal() {
               )}
             </div>
  
-            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94A3B8" }}>EYEAI Workspace</p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#94A3B8" }}>{company} Workspace</p>
             <h1 style={{ margin: "0 0 12px", fontSize: 42, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
               Welcome, <span style={{ color: "#4F46E5" }}>{username}</span>
             </h1>
