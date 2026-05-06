@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { registerCompany } from "../services/api.js"; // ✅ use api.js — single URL source
 
 export default function Homepage() {
   const navigate = useNavigate();
@@ -11,18 +12,8 @@ export default function Homepage() {
     e.preventDefault();
     setLoading(true);
     try {
-      // Bypassing api.js completely to destroy the Vercel cache
-      const res = await fetch("https://lumora-backend-x6vt.onrender.com/register-company", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCompany })
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Server error: ${res.status}`);
-      }
-
+      // ✅ Now goes to HF Space → Neon DB (same as everything else)
+      await registerCompany({ name: newCompany });
       setMsg(`Company '${newCompany}' registered successfully!`);
       setNewCompany("");
     } catch (err) {
@@ -51,15 +42,18 @@ export default function Homepage() {
 
       <div style={{ background: "#fff", padding: "32px", borderRadius: 20, boxShadow: "0 4px 24px rgba(0,0,0,.08)", width: "100%", maxWidth: 400, boxSizing: "border-box" }}>
         <h3 style={{ margin: "0 0 20px", fontSize: 18, color: "#0F172A" }}>Register a New Company</h3>
-        {msg && <p style={{ fontSize: 13, color: msg.includes("success") ? "#166534" : "#991B1B", background: msg.includes("success") ? "#DCFCE7" : "#FEF2F2", padding: "10px", borderRadius: 8, marginBottom: 16 }}>{msg}</p>}
-        
+        {msg && (
+          <p style={{ fontSize: 13, color: msg.includes("success") ? "#166534" : "#991B1B", background: msg.includes("success") ? "#DCFCE7" : "#FEF2F2", padding: "10px", borderRadius: 8, marginBottom: 16 }}>
+            {msg}
+          </p>
+        )}
         <form onSubmit={handleRegisterCompany} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
             <label style={{ display: "block", marginBottom: 5, fontSize: 12, fontWeight: 600, color: "#475569", textTransform: "uppercase" }}>Company Name</label>
-            <input 
-              type="text" 
-              value={newCompany} 
-              onChange={(e) => setNewCompany(e.target.value)} 
+            <input
+              type="text"
+              value={newCompany}
+              onChange={(e) => setNewCompany(e.target.value)}
               required
               style={{ width: "100%", padding: "11px 14px", borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 14, boxSizing: "border-box", outline: "none" }}
             />
