@@ -1,6 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL
-  ? import.meta.env.VITE_API_URL
-  : "/api";
+const BASE = "https://lumora-backend-x6vt.onrender.com";
 
 async function req(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
