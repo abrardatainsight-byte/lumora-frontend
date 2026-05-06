@@ -1,4 +1,4 @@
-const BASE = "https://lumora-backend-x6vt.onrender.com";
+const BASE = "https://yourusername-lumora-backend.hf.space";
 
 async function req(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
