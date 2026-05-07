@@ -17,7 +17,7 @@ export default function EmployeePortal() {
   const [lastEmotion, setLastEmotion] = useState(null);
   const [captureCount, setCaptureCount] = useState(0);
   const [flashColor, setFlashColor] = useState(null);
-  const [debugError, setDebugError] = useState(""); // NEW: Error state
+  const [debugError, setDebugError] = useState("");
   const flashRef = useRef(null);
   const lastCaptureRef = useRef(0);
 
@@ -42,7 +42,7 @@ export default function EmployeePortal() {
     };
   }, []);
 
-// NEW: Bulletproof manual binary decoding
+  // NEW: Sends text data instead of a FormData file
   const captureAndSend = async () => {
     setDebugError(""); 
     const video = videoRef.current;
@@ -58,25 +58,11 @@ export default function EmployeePortal() {
     canvas.getContext("2d").drawImage(video, 0, 0, 320, 240);
     
     try {
-      // 1. Extract raw text data from the canvas
+      // Extract raw base64 text string from the canvas
       const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
       
-      // 2. Strip off the metadata prefix
-      const base64Data = dataUrl.split(",")[1];
-      
-      // 3. Manually decode the base64 text into raw binary bytes
-      const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      
-      // 4. Forge a strict, guaranteed native Blob object
-      const actualBlob = new Blob([byteArray], { type: "image/jpeg" });
-
-      // 5. Send the guaranteed Blob to your Hugging Face API
-      const result = await analyzeEmotion(username, actualBlob);
+      // Send the text directly to the API
+      const result = await analyzeEmotion(username, dataUrl);
       
       if (result?.emotion) {
         setLastEmotion(result.emotion);
@@ -94,7 +80,6 @@ export default function EmployeePortal() {
       setDebugError(`Upload Error: ${err.message}`);
       console.error("Full upload error:", err);
     } finally {
-      // Always clear the hidden canvas to save memory
       canvas.getContext("2d").clearRect(0, 0, 320, 240);
     }
   };
@@ -164,14 +149,12 @@ export default function EmployeePortal() {
               </span>
             )}
 
-            {/* ERROR DISPLAY */}
             {debugError && (
               <div style={{ marginTop: 24, padding: "12px 16px", background: "#FEF2F2", color: "#991B1B", borderRadius: 10, fontSize: 13, border: "1px solid #FECACA", textAlign: "left" }}>
                 <strong>Debug Log:</strong> {debugError}
               </div>
             )}
 
-            {/* MANUAL DEBUG BUTTON */}
             {cameraStatus === "ready" && (
               <div style={{ marginTop: 24 }}>
                 <button
@@ -213,7 +196,7 @@ export default function EmployeePortal() {
 
         <footer style={{ padding: "16px 40px", borderTop: "1px solid #E2E8F0", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: 12, color: "#CBD5E1", lineHeight: 1.6 }}>
-            Frames are processed in real time and immediately discarded — only emotion patterns are shared with HR.
+            Frames are processed in real time and immediately discarded.
           </p>
         </footer>
       </div>
