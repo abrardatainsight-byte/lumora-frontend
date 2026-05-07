@@ -43,10 +43,12 @@ export default function EmployeePortal() {
   }, []);
 
   // NEW: Extracted function so we can trigger it manually
+// NEW: Bulletproof image capture function
   const captureAndSend = async () => {
     setDebugError(""); // Clear previous errors
     const video = videoRef.current;
     const canvas = canvasRef.current;
+    
     if (!video || !canvas || video.readyState < 2) {
       setDebugError("Camera feed not ready.");
       return;
@@ -56,32 +58,36 @@ export default function EmployeePortal() {
     canvas.height = 240;
     canvas.getContext("2d").drawImage(video, 0, 0, 320, 240);
     
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        setDebugError("Failed to generate image blob from canvas.");
-        return;
+    try {
+      // 1. Extract raw image data safely
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      
+      // 2. Force the browser to create a native, valid Blob object
+      const fetchRes = await fetch(dataUrl);
+      const actualBlob = await fetchRes.blob();
+
+      // 3. Send the guaranteed Blob to your Hugging Face API
+      const result = await analyzeEmotion(username, actualBlob);
+      
+      if (result?.emotion) {
+        setLastEmotion(result.emotion);
+        setCaptureCount(c => c + 1);
+        const hex = EMOTION_COLORS[result.emotion] || "#5B4FDB";
+        setFlashColor(hex);
+        if (flashRef.current) clearTimeout(flashRef.current);
+        flashRef.current = setTimeout(() => setFlashColor(null), 1400);
+      } else if (result?.message) {
+        setDebugError(`Server Response: ${result.message}`);
+      } else {
+        setDebugError("Unexpected response format from server.");
       }
-      try {
-        const result = await analyzeEmotion(username, blob);
-        if (result?.emotion) {
-          setLastEmotion(result.emotion);
-          setCaptureCount(c => c + 1);
-          const hex = EMOTION_COLORS[result.emotion] || "#5B4FDB";
-          setFlashColor(hex);
-          if (flashRef.current) clearTimeout(flashRef.current);
-          flashRef.current = setTimeout(() => setFlashColor(null), 1400);
-        } else if (result?.message) {
-          setDebugError(`Server Response: ${result.message}`);
-        } else {
-          setDebugError("Unexpected response format from server.");
-        }
-      } catch (err) {
-        setDebugError(`Upload Error: ${err.message}`);
-        console.error("Full upload error:", err);
-      } finally {
-        canvas.getContext("2d").clearRect(0, 0, 320, 240);
-      }
-    }, "image/jpeg", 0.8);
+    } catch (err) {
+      setDebugError(`Upload Error: ${err.message}`);
+      console.error("Full upload error:", err);
+    } finally {
+      // Always clear the hidden canvas
+      canvas.getContext("2d").clearRect(0, 0, 320, 240);
+    }
   };
 
   useEffect(() => {
