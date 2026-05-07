@@ -42,10 +42,9 @@ export default function EmployeePortal() {
     };
   }, []);
 
-  // NEW: Extracted function so we can trigger it manually
-// NEW: Bulletproof image capture function
+// NEW: Bulletproof manual binary decoding
   const captureAndSend = async () => {
-    setDebugError(""); // Clear previous errors
+    setDebugError(""); 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     
@@ -59,14 +58,24 @@ export default function EmployeePortal() {
     canvas.getContext("2d").drawImage(video, 0, 0, 320, 240);
     
     try {
-      // 1. Extract raw image data safely
+      // 1. Extract raw text data from the canvas
       const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
       
-      // 2. Force the browser to create a native, valid Blob object
-      const fetchRes = await fetch(dataUrl);
-      const actualBlob = await fetchRes.blob();
+      // 2. Strip off the metadata prefix
+      const base64Data = dataUrl.split(",")[1];
+      
+      // 3. Manually decode the base64 text into raw binary bytes
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      
+      // 4. Forge a strict, guaranteed native Blob object
+      const actualBlob = new Blob([byteArray], { type: "image/jpeg" });
 
-      // 3. Send the guaranteed Blob to your Hugging Face API
+      // 5. Send the guaranteed Blob to your Hugging Face API
       const result = await analyzeEmotion(username, actualBlob);
       
       if (result?.emotion) {
@@ -85,7 +94,7 @@ export default function EmployeePortal() {
       setDebugError(`Upload Error: ${err.message}`);
       console.error("Full upload error:", err);
     } finally {
-      // Always clear the hidden canvas
+      // Always clear the hidden canvas to save memory
       canvas.getContext("2d").clearRect(0, 0, 320, 240);
     }
   };
