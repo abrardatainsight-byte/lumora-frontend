@@ -17,12 +17,10 @@ export default function EmployeePortal() {
   const [lastEmotion, setLastEmotion] = useState(null);
   const [captureCount, setCaptureCount] = useState(0);
   const [flashColor, setFlashColor] = useState(null);
+  const [debugError, setDebugError] = useState(""); // NEW: Error state
   const flashRef = useRef(null);
-  
-  // BUG FIX: The cooldown lock. Prevents DDoS-ing the Hugging Face server.
   const lastCaptureRef = useRef(0);
 
-  // Start camera
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -44,43 +42,61 @@ export default function EmployeePortal() {
     };
   }, []);
 
-  // Poll for HR trigger every 3s
+  // NEW: Extracted function so we can trigger it manually
+  const captureAndSend = async () => {
+    setDebugError(""); // Clear previous errors
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState < 2) {
+      setDebugError("Camera feed not ready.");
+      return;
+    }
+    
+    canvas.width = 320; 
+    canvas.height = 240;
+    canvas.getContext("2d").drawImage(video, 0, 0, 320, 240);
+    
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        setDebugError("Failed to generate image blob from canvas.");
+        return;
+      }
+      try {
+        const result = await analyzeEmotion(username, blob);
+        if (result?.emotion) {
+          setLastEmotion(result.emotion);
+          setCaptureCount(c => c + 1);
+          const hex = EMOTION_COLORS[result.emotion] || "#5B4FDB";
+          setFlashColor(hex);
+          if (flashRef.current) clearTimeout(flashRef.current);
+          flashRef.current = setTimeout(() => setFlashColor(null), 1400);
+        } else if (result?.message) {
+          setDebugError(`Server Response: ${result.message}`);
+        } else {
+          setDebugError("Unexpected response format from server.");
+        }
+      } catch (err) {
+        setDebugError(`Upload Error: ${err.message}`);
+        console.error("Full upload error:", err);
+      } finally {
+        canvas.getContext("2d").clearRect(0, 0, 320, 240);
+      }
+    }, "image/jpeg", 0.8);
+  };
+
   useEffect(() => {
     if (cameraStatus !== "ready") return;
-    const captureAndSend = async () => {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      if (!video || !canvas || video.readyState < 2) return;
-      canvas.width = 320; canvas.height = 240;
-      canvas.getContext("2d").drawImage(video, 0, 0, 320, 240);
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        try {
-          const result = await analyzeEmotion(username, blob);
-          if (result?.emotion) {
-            setLastEmotion(result.emotion);
-            setCaptureCount(c => c + 1);
-            // Capture flash
-            const hex = EMOTION_COLORS[result.emotion] || "#5B4FDB";
-            setFlashColor(hex);
-            if (flashRef.current) clearTimeout(flashRef.current);
-            flashRef.current = setTimeout(() => setFlashColor(null), 1400);
-          }
-          canvas.getContext("2d").clearRect(0, 0, 320, 240);
-        } catch {}
-      }, "image/jpeg", 0.8);
-    };
-
     const poll = async () => {
       try {
         const res = await checkTrigger(company);
         const now = Date.now();
-        // BUG FIX: Ignore the trigger if we have already captured a photo in the last 12 seconds
         if (res?.capture_now && (now - lastCaptureRef.current > 12000)) {
           lastCaptureRef.current = now;
           captureAndSend();
         }
-      } catch {}
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
     };
     const id = setInterval(poll, 3000);
     return () => clearInterval(id);
@@ -124,16 +140,7 @@ export default function EmployeePortal() {
             <h1 style={{ margin: "0 0 12px", fontSize: 42, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
               Welcome, <span style={{ color: "#4F46E5" }}>{username}</span>
             </h1>
-            <p style={{ margin: "0 0 32px", fontSize: 16, color: "#64748B", lineHeight: 1.6 }}>
-              Keep this tab open. Your HR team will request a snapshot when analysis is needed.
-            </p>
 
-            {cameraStatus === "initializing" && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", background: "#F1F5F9", borderRadius: 99, fontSize: 13, color: "#64748B", fontWeight: 500 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#94A3B8" }} />
-                Connecting to camera…
-              </span>
-            )}
             {cameraStatus === "ready" && (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", background: "#DCFCE7", borderRadius: 99, fontSize: 13, color: "#166534", fontWeight: 600 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", animation: "pulse 2s infinite" }} />
@@ -141,11 +148,24 @@ export default function EmployeePortal() {
                 {captureCount > 0 && <span style={{ opacity: 0.7, fontWeight: 400, fontFamily: "monospace" }}>· {captureCount} sync{captureCount !== 1 ? "s" : ""}</span>}
               </span>
             )}
-            {cameraStatus === "denied" && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", background: "#FEF2F2", borderRadius: 99, fontSize: 13, color: "#991B1B", fontWeight: 600 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} />
-                Camera access denied — check browser settings
-              </span>
+
+            {/* ERROR DISPLAY */}
+            {debugError && (
+              <div style={{ marginTop: 24, padding: "12px 16px", background: "#FEF2F2", color: "#991B1B", borderRadius: 10, fontSize: 13, border: "1px solid #FECACA", textAlign: "left" }}>
+                <strong>Debug Log:</strong> {debugError}
+              </div>
+            )}
+
+            {/* MANUAL DEBUG BUTTON */}
+            {cameraStatus === "ready" && (
+              <div style={{ marginTop: 24 }}>
+                <button
+                  onClick={captureAndSend}
+                  style={{ padding: "10px 20px", background: "#fff", border: "1px solid #E2E8F0", borderRadius: 10, cursor: "pointer", fontSize: 13, color: "#475569", fontWeight: 600, boxShadow: "0 1px 3px rgba(0,0,0,.05)" }}
+                >
+                  🔧 Force Manual Sync (Debug)
+                </button>
+              </div>
             )}
 
             <div style={{ 
@@ -168,12 +188,7 @@ export default function EmployeePortal() {
                   autoPlay
                   playsInline
                   muted
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    transform: "scaleX(-1)"
-                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }}
                 />
               </div>
             </div>
@@ -183,7 +198,6 @@ export default function EmployeePortal() {
 
         <footer style={{ padding: "16px 40px", borderTop: "1px solid #E2E8F0", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: 12, color: "#CBD5E1", lineHeight: 1.6 }}>
-            A brief glow at the screen edge marks each moment of analysis.
             Frames are processed in real time and immediately discarded — only emotion patterns are shared with HR.
           </p>
         </footer>
