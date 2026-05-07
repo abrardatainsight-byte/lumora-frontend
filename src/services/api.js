@@ -30,7 +30,7 @@ export const getResults = (range = "week", company) => req(`/hr/results?range=${
 export const getEmployees = (range = "week", search = "", company) => req(`/hr/employees?range=${range}&search=${encodeURIComponent(search)}&company=${encodeURIComponent(company)}`);
 export const getMatrix = (range = "week", company) => req(`/hr/matrix?range=${range}&company=${encodeURIComponent(company)}`);
 
-// Restored FormData logic
+// Restored standard FormData logic
 export const analyzeEmotion = (username, blob) => {
   const form = new FormData();
   form.append("username", username);
@@ -40,6 +40,7 @@ export const analyzeEmotion = (username, blob) => {
 
 export const EMOTION_COLORS = { Happy: "#F4A261", Neutral: "#94A3B8", Stress: "#E76F51", Drowsiness: "#8B7EC8", Sad: "#60A5FA", Angry: "#EF4444", Fear: "#A78BFA", Surprise: "#34D399", Disgust: "#6B7280" };
 export const ALL_EMOTIONS = Object.keys(EMOTION_COLORS);
+
 export function relativeTime(iso) {
   if (!iso) return "—";
   const d = Math.floor((Date.now() - new Date(iso)) / 1000);
