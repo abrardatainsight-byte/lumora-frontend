@@ -1,4 +1,6 @@
-const BASE = "https://rabbydatainsight-lumora-backend.hf.space"; // ✅ Single source of truth
+const BASE = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL
+  : "/api";
 
 async function req(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -6,31 +8,25 @@ async function req(path, opts = {}) {
     ...opts,
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: `Server error: ${res.status}` }));
-    throw new Error(err.detail || `Server error: ${res.status}`);
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Request failed");
   }
   return res.json();
 }
 
 // Auth & Companies
-export const registerCompany = async (data) => {
-  const res = await fetch(`${BASE}/register-company`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: `Server error: ${res.status}` }));
-    throw new Error(err.detail || `Server error: ${res.status}`);
-  }
-  return res.json();
-};
+export const registerCompany = (data) =>
+  req("/register-company", { method: "POST", body: JSON.stringify(data) });
 
 export const getCompanies = () => req("/companies");
-export const register = (data) => req("/register", { method: "POST", body: JSON.stringify(data) });
-export const login = (data) => req("/login", { method: "POST", body: JSON.stringify(data) });
 
-// Trigger — both now point to same backend ✅
+export const register = (data) =>
+  req("/register", { method: "POST", body: JSON.stringify(data) });
+
+export const login = (data) =>
+  req("/login", { method: "POST", body: JSON.stringify(data) });
+
+// Trigger
 export const triggerCapture = (company) =>
   req(`/trigger-capture?company=${encodeURIComponent(company)}`, { method: "POST" });
 
@@ -40,29 +36,36 @@ export const checkTrigger = (company) =>
 // HR analytics
 export const getGlobalPulse = (range = "week", company) =>
   req(`/hr/global-pulse?range=${range}&company=${encodeURIComponent(company)}`);
+
 export const getDistribution = (range = "week", company) =>
   req(`/hr/distribution?range=${range}&company=${encodeURIComponent(company)}`);
+
 export const getWeeklyTrend = (company) =>
   req(`/hr/weekly-trend?company=${encodeURIComponent(company)}`);
-export const getIntensity = (company) =>
+
+export const getIntensity = (company) => 
   req(`/hr/intensity?company=${encodeURIComponent(company)}`);
+
 export const getResults = (range = "week", company) =>
   req(`/hr/results?range=${range}&company=${encodeURIComponent(company)}`);
+
 export const getEmployees = (range = "week", search = "", company) =>
   req(`/hr/employees?range=${range}&search=${encodeURIComponent(search)}&company=${encodeURIComponent(company)}`);
+
 export const getMatrix = (range = "week", company) =>
   req(`/hr/matrix?range=${range}&company=${encodeURIComponent(company)}`);
 
-// Employee analyze — FormData, NOT JSON
-export const analyzeEmotion = (username, company, blob) => {
-  const form = new FormData();
-  form.append("username", username);
-  form.append("company", company); // ✅ also send company so backend knows which org
-  form.append("file", blob, "capture.jpg");
-  return fetch(`${BASE}/analyze`, { method: "POST", body: form }).then((r) => r.json());
+// NEW: Emotion analysis bypasses FormData and sends JSON Text instead
+export const analyzeEmotion = (username, base64Image) => {
+  return req(`/analyze`, { 
+    method: "POST", 
+    body: JSON.stringify({ 
+      username: username, 
+      image_base64: base64Image 
+    }) 
+  });
 };
 
-// Emotion colour map
 export const EMOTION_COLORS = {
   Happy:      "#F4A261",
   Neutral:    "#94A3B8",
@@ -77,11 +80,14 @@ export const EMOTION_COLORS = {
 
 export const ALL_EMOTIONS = Object.keys(EMOTION_COLORS);
 
-export function relativeTime(iso) {
-  if (!iso) return "—";
-  const d = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (d < 60) return `${d}s ago`;
-  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
-  if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
-  return `${Math.floor(d / 86400)}d ago`;
-}
+export const relativeTime = (isoString) => {
+  if (!isoString) return "Never";
+  let tzStr = isoString;
+  if (!tzStr.endsWith("Z") && !tzStr.includes("+")) tzStr += "Z";
+  const date = new Date(tzStr);
+  const diff = Math.floor((new Date() - date) / 1000);
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
