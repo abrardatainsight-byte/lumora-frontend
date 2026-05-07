@@ -103,16 +103,10 @@ function GlobalPulseTab({ range, company }) {
   const runAnalysis = async () => {
     setAnalyzing(true);
     try { 
-      // Update this URL!
-      await fetch(`https://yourusername-lumora-backend.hf.space/trigger-capture?company=${encodeURIComponent(company)}`, {
-        method: "POST"
-      });
-      setTimeout(() => { load(); setAnalyzing(false); }, 4000); 
+      await triggerCapture(company); 
+      setTimeout(() => { load(); setAnalyzing(false); }, 12000); 
     }
-    catch (err) { 
-      console.error(err);
-      setAnalyzing(false); 
-    }
+    catch { setAnalyzing(false); }
   };
 
   const dominant = pulse?.dominant_emotion || "Neutral";
